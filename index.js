@@ -47,7 +47,7 @@ async function queryTeoDomainCerts(zoneId, domains) {
     Filters: [
       {
         Name: 'domain-name',
-        Value: domains,
+        Values: domains,
       },
     ],
   };
