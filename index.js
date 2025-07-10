@@ -284,7 +284,7 @@ async function main() {
   console.log('domainChunks:', domainChunks);
 
   const oldCerts = (
-    await Promise.all(domainChunks.map((chunk) => queryTeoDomainCerts(chunk)))
+    await Promise.all(domainChunks.map((chunk) => queryTeoDomainCerts(zoneId, chunk)))
   ).flat();
   const oldCertIds = [...new Set(oldCerts.map((x) => x.certId).filter(Boolean))];
   const domainWithoutCert = oldCerts
