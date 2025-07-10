@@ -103,7 +103,7 @@ async function updateCert(oldCertId, newCertId) {
 
   const params = {
     OldCertificateId: oldCertId,
-    ResourceTypes: ['cdn'],
+    ResourceTypes: ['teo'],
     CertificateId: newCertId,
     ExpiringNotificationSwitch: 1,
   };
