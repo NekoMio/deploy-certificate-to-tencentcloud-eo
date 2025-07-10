@@ -306,7 +306,7 @@ async function main() {
 
   if (domainWithoutCert.length > 0) {
     for (const domain of domainWithoutCert) {
-      await updateTeoDomainConfig(zoneId, domain, certId);
+      await updateTeoCertConfig(zoneId, domain, certId);
 
       console.log('Successfully updated domain', domain, 'with cert', certId);
     }

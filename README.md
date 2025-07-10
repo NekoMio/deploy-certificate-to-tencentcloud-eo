@@ -29,7 +29,7 @@ jobs:
           # Specify PEM private key file
           key-file: ${{ env.FILE_KEY }}
 
-          zone-id: ${{ env.ZONE_ID }}
+          zone-id: zone-xxxxx # Replace with your actual TEO zone ID
 
           # Deploy to CDN
           zone-id-domains: |
