@@ -16,9 +16,12 @@ inputs:
   key-file:
     description: The file path of the PEM private key file.
     required: true
-  cdn-domains:
-    description: Enter a list of CDN domains you want to deploy the certificate to.
+  zone-id:
+    description: Enter a list of zone ID you want to deploy the certificate to.
+    required: true
+  zone-id-domains:
+    description: Enter a list of domains you want to deploy the certificate to zone-id, in the format of `domain1 domain2`.
     required: true
 runs:
-  using: node16
+  using: node20
   main: bootstrap.js

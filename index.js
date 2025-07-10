@@ -8,7 +8,8 @@ const input = {
   secretKey: core.getInput('secret-key'),
   fullchainFile: core.getInput('fullchain-file'),
   keyFile: core.getInput('key-file'),
-  cdnDomains: core.getInput('cdn-domains'),
+  zoneId: core.getInput('zone-id'),
+  zoneIdDomains: core.getInput('zone-id-domains'),
 };
 
 const sharedClientConfig = {
@@ -19,11 +20,11 @@ const sharedClientConfig = {
   region: '',
 };
 
-const cdnClientConfig = {
+const teoClientConfig = {
   ...sharedClientConfig,
   profile: {
     httpProfile: {
-      endpoint: 'cdn.tencentcloudapi.com',
+      endpoint: 'teo.tencentcloudapi.com',
     },
   },
 };
@@ -37,27 +38,28 @@ const sslClientConfig = {
   },
 };
 
-async function queryCdnDomainCerts(domains) {
-  const client = new tencentcloud.cdn.v20180606.Client(cdnClientConfig);
+async function queryTeoDomainCerts(zoneId, domains) {
+  const client = new tencentcloud.teo.v20220901.Client(teoClientConfig);
   const params = {
+    ZoneId: zoneId,
     Offset: 0,
-    Limit: 1000,
+    Limit: 200,
     Filters: [
       {
-        Name: 'domain',
+        Name: 'domain-name',
         Value: domains,
       },
     ],
   };
 
-  return await client.DescribeDomainsConfig(params).then(
+  return await client.DescribeAccelerationDomains(params).then(
     (data) => {
-      console.log('Success:', 'DescribeDomainsConfig');
+      console.log('Success:', 'DescribeAccelerationDomains');
       console.debug(data);
 
-      const res = data.Domains.map((domain) => ({
-        domain: domain.Domain,
-        certId: domain.Https?.CertInfo?.CertId,
+      const res = data.AccelerationDomains.map((domain) => ({
+        domain: domain.DomainName,
+        certId: domain.Certificate?.List?.[0]?.CertId,
       }));
 
       console.log(res);
@@ -233,20 +235,18 @@ async function deleteCertificates(certIds) {
   console.error('Delete task timeout');
 }
 
-async function updateCdnDomainConfig(domain, certId) {
-  const client = new tencentcloud.cdn.v20180606.Client(cdnClientConfig);
+async function updateTeoCertConfig(zoneId, domains, certId) {
+  const client = new tencentcloud.teo.v20220901.Client(teoClientConfig);
   const params = {
-    Domain: domain,
-    Https: {
-      Switch: 'on',
-      Http2: 'on',
-      CertInfo: {
-        CertId: certId,
-      },
-    },
+    ZoneId: zoneId,
+    Hosts: domains,
+    Mode: 'sslcert',
+    ServerCertInfo: {
+      CertId: certId
+    }
   };
 
-  await client.UpdateDomainConfig(params).then(
+  await client.ModifyHostsCertificate(params).then(
     (data) => {
       console.log('Success:', data);
       console.debug(data);
@@ -260,7 +260,9 @@ async function updateCdnDomainConfig(domain, certId) {
 }
 
 async function main() {
-  const domains = Array.from(new Set(input.cdnDomains.split(/\s+/).filter((x) => x)));
+  const zoneId = input.zoneId;
+
+  const zoneIdDomains = Array.from(new Set(input.zoneIdDomains.split(/\s+/).filter((x) => x)));
 
   const cert = fs.readFileSync(input.fullchainFile, 'utf8');
   const key = fs.readFileSync(input.keyFile, 'utf8');
@@ -269,7 +271,7 @@ async function main() {
   console.log('CertId:', certId);
 
   // batch query, 4 domains per request
-  const domainChunks = domains.reduce((acc, domain) => {
+  const domainChunks = zoneIdDomains.reduce((acc, domain) => {
     if (acc.length === 0 || acc[acc.length - 1].length === 4) {
       acc.push([]);
     }
@@ -282,7 +284,7 @@ async function main() {
   console.log('domainChunks:', domainChunks);
 
   const oldCerts = (
-    await Promise.all(domainChunks.map((chunk) => queryCdnDomainCerts(chunk)))
+    await Promise.all(domainChunks.map((chunk) => queryTeoDomainCerts(chunk)))
   ).flat();
   const oldCertIds = [...new Set(oldCerts.map((x) => x.certId).filter(Boolean))];
   const domainWithoutCert = oldCerts
@@ -304,7 +306,7 @@ async function main() {
 
   if (domainWithoutCert.length > 0) {
     for (const domain of domainWithoutCert) {
-      await updateCdnDomainConfig(domain, certId);
+      await updateTeoDomainConfig(zoneId, domain, certId);
 
       console.log('Successfully updated domain', domain, 'with cert', certId);
     }
